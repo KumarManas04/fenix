@@ -11,9 +11,20 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.speech.RecognizerIntent
+import android.view.View
 import android.widget.RemoteViews
+import org.mozilla.fenix.utils.Settings
 
 class SearchWidgetProvider : AppWidgetProvider() {
+
+    override fun onEnabled(context: Context) {
+        Settings.instance?.addSearchWidgetInstalled(1)
+    }
+
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        Settings.instance?.addSearchWidgetInstalled(-appWidgetIds.size)
+    }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         val textSearchIntent = createTextSearchIntent(context)
@@ -22,7 +33,10 @@ class SearchWidgetProvider : AppWidgetProvider() {
         appWidgetIds.forEach { appWidgetId ->
             val currentWidth = appWidgetManager.getAppWidgetOptions(appWidgetId).getInt(OPTION_APPWIDGET_MIN_WIDTH)
             val layoutSize = getLayoutSize(currentWidth)
-            val layout = getLayout(layoutSize)
+            // It's not enough to just hide the microphone on the "small" sized widget due to its design.
+            // The "small" widget needs a complete redesign, meaning it needs a new layout file.
+            val showMic = (voiceSearchIntent != null)
+            val layout = getLayout(layoutSize, showMic)
             val text = getText(layoutSize, context)
 
             val views = createRemoteViews(context, layout, textSearchIntent, voiceSearchIntent, text)
@@ -41,7 +55,8 @@ class SearchWidgetProvider : AppWidgetProvider() {
 
         val currentWidth = appWidgetManager.getAppWidgetOptions(appWidgetId).getInt(OPTION_APPWIDGET_MIN_WIDTH)
         val layoutSize = getLayoutSize(currentWidth)
-        val layout = getLayout(layoutSize)
+        val showMic = (voiceSearchIntent != null)
+        val layout = getLayout(layoutSize, showMic)
         val text = getText(layoutSize, context)
 
         val views = createRemoteViews(context, layout, textSearchIntent, voiceSearchIntent, text)
@@ -49,25 +64,27 @@ class SearchWidgetProvider : AppWidgetProvider() {
     }
 
     private fun getLayoutSize(dp: Int) = when {
-        dp >= DP_EXTRA_LARGE -> SearchWidgetProviderSize.EXTRA_LARGE
         dp >= DP_LARGE -> SearchWidgetProviderSize.LARGE
         dp >= DP_MEDIUM -> SearchWidgetProviderSize.MEDIUM
         dp >= DP_SMALL -> SearchWidgetProviderSize.SMALL
-        else -> SearchWidgetProviderSize.EXTRA_SMALL
+        dp >= DP_EXTRA_SMALL -> SearchWidgetProviderSize.EXTRA_SMALL_V2
+        else -> SearchWidgetProviderSize.EXTRA_SMALL_V1
     }
 
-    private fun getLayout(size: SearchWidgetProviderSize) = when (size) {
-        SearchWidgetProviderSize.EXTRA_LARGE -> R.layout.search_widget_extra_large
+    private fun getLayout(size: SearchWidgetProviderSize, showMic: Boolean) = when (size) {
         SearchWidgetProviderSize.LARGE -> R.layout.search_widget_large
         SearchWidgetProviderSize.MEDIUM -> R.layout.search_widget_medium
-        SearchWidgetProviderSize.SMALL -> R.layout.search_widget_small
-        SearchWidgetProviderSize.EXTRA_SMALL -> R.layout.search_widget_extra_small
+        SearchWidgetProviderSize.SMALL -> {
+            if (showMic) R.layout.search_widget_small
+            else R.layout.search_widget_small_no_mic
+        }
+        SearchWidgetProviderSize.EXTRA_SMALL_V2 -> R.layout.search_widget_extra_small_v2
+        SearchWidgetProviderSize.EXTRA_SMALL_V1 -> R.layout.search_widget_extra_small_v1
     }
 
     private fun getText(layout: SearchWidgetProviderSize, context: Context) = when (layout) {
         SearchWidgetProviderSize.MEDIUM -> context.getString(R.string.search_widget_text_short)
-        SearchWidgetProviderSize.LARGE,
-        SearchWidgetProviderSize.EXTRA_LARGE -> context.getString(R.string.search_widget_text_long)
+        SearchWidgetProviderSize.LARGE -> context.getString(R.string.search_widget_text_long)
         else -> null
     }
 
@@ -80,25 +97,32 @@ class SearchWidgetProvider : AppWidgetProvider() {
             }
     }
 
-    private fun createVoiceSearchIntent(context: Context): PendingIntent {
-        return Intent(context, IntentReceiverActivity::class.java)
+    private fun createVoiceSearchIntent(context: Context): PendingIntent? {
+        val voiceIntent = Intent(context, IntentReceiverActivity::class.java)
             .let { intent ->
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 intent.putExtra(IntentReceiverActivity.SPEECH_PROCESSING, true)
-                PendingIntent.getActivity(context, REQUEST_CODE_VOICE, intent, 0)
             }
+
+        val intentSpeech = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+
+        return intentSpeech.resolveActivity(context.packageManager)?.let {
+            PendingIntent.getActivity(context, REQUEST_CODE_VOICE, voiceIntent, 0)
+        }
     }
 
     private fun createRemoteViews(
         context: Context,
         layout: Int,
         textSearchIntent: PendingIntent,
-        voiceSearchIntent: PendingIntent,
+        voiceSearchIntent: PendingIntent?,
         text: String?
     ): RemoteViews {
         return RemoteViews(context.packageName, layout).apply {
             when (layout) {
-                R.layout.search_widget_extra_small -> {
+                R.layout.search_widget_extra_small_v1,
+                R.layout.search_widget_extra_small_v2,
+                R.layout.search_widget_small_no_mic -> {
                     setOnClickPendingIntent(R.id.button_search_widget_new_tab, textSearchIntent)
                 }
                 R.layout.search_widget_small -> {
@@ -106,11 +130,15 @@ class SearchWidgetProvider : AppWidgetProvider() {
                     setOnClickPendingIntent(R.id.button_search_widget_voice, voiceSearchIntent)
                 }
                 R.layout.search_widget_medium,
-                R.layout.search_widget_large,
-                R.layout.search_widget_extra_large -> {
+                R.layout.search_widget_large -> {
                     setOnClickPendingIntent(R.id.button_search_widget_new_tab, textSearchIntent)
                     setOnClickPendingIntent(R.id.button_search_widget_voice, voiceSearchIntent)
-                    setTextViewText(R.id.text_search_widget, text)
+                    setTextViewText(R.id.button_search_widget_new_tab, text)
+                    // Unlike "small" widget, "medium" and "large" sizes do not have separate layouts
+                    // that exclude the microphone icon, which is why we must hide it accordingly here.
+                    if (voiceSearchIntent == null) {
+                        this.setViewVisibility(R.id.button_search_widget_voice, View.GONE)
+                    }
                 }
             }
         }
@@ -118,19 +146,19 @@ class SearchWidgetProvider : AppWidgetProvider() {
 
     // Cell sizes obtained from the actual dimensions listed in search widget specs
     companion object {
+        private const val DP_EXTRA_SMALL = 64
         private const val DP_SMALL = 100
         private const val DP_MEDIUM = 192
         private const val DP_LARGE = 256
-        private const val DP_EXTRA_LARGE = 360
         private const val REQUEST_CODE_NEW_TAB = 0
         private const val REQUEST_CODE_VOICE = 1
     }
 }
 
 enum class SearchWidgetProviderSize {
-    EXTRA_SMALL,
+    EXTRA_SMALL_V1,
+    EXTRA_SMALL_V2,
     SMALL,
     MEDIUM,
     LARGE,
-    EXTRA_LARGE
 }

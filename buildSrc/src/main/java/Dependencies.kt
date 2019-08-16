@@ -34,7 +34,7 @@ object Versions {
     const val androidx_work = "2.0.1"
     const val google_material = "1.1.0-alpha07"
 
-    const val mozilla_android_components = "8.0.0-SNAPSHOT"
+    const val mozilla_android_components = "8.0.0"
     // Note that android-components also depends on application-services,
     // and in fact is our main source of appservices-related functionality.
     // The version number below tracks the application-services version
@@ -203,7 +203,6 @@ object Deps {
     const val tools_test_runner = "androidx.test:runner:${Versions.tools_test_runner}"
     const val uiautomator = "com.android.support.test.uiautomator:uiautomator-v18:${Versions.uiautomator}"
     const val robolectric = "org.robolectric:robolectric:${Versions.robolectric}"
-    const val fragment_testing = "androidx.fragment:fragment-testing:${Versions.androidx_fragment}"
     const val androidx_junit = "androidx.test.ext:junit:${Versions.androidx_test_ext}"
     const val androidx_test_core = "androidx.test:core:${Versions.androidx_testing}"
 

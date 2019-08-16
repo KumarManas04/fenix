@@ -8,7 +8,7 @@
         <th>key</th>
         <th>type</th>
         <th>description</th>
-        <th>data deview</th>
+        <th>data review</th>
         <th>extras</th>
         <th>expires</th>
     </tr>
@@ -634,7 +634,7 @@ tracking_protection</td>
     <tr>
         <td>sign_in</td>
         <td>event</td>
-        <td>A user pressed the sign in button on the sync authentication page</td>
+        <td>A user pressed the sign in button on the sync authentication page and was successfully signed in to FxA</td>
         <td><a href="https://github.com/mozilla-mobile/fenix/pull/2745#issuecomment-494918532">link</a></td>
         <td></td>
         <td>2020-03-01</td>
@@ -690,14 +690,6 @@ tracking_protection</td>
         <td>sync_now</td>
         <td>event</td>
         <td>A user pressed the sync now button on the sync account page</td>
-        <td><a href="https://github.com/mozilla-mobile/fenix/pull/2745#issuecomment-494918532">link</a></td>
-        <td></td>
-        <td>2020-03-01</td>
-    </tr>
-    <tr>
-        <td>sign_out</td>
-        <td>event</td>
-        <td>A user pressed the sign out button on the sync account page</td>
         <td><a href="https://github.com/mozilla-mobile/fenix/pull/2745#issuecomment-494918532">link</a></td>
         <td></td>
         <td>2020-03-01</td>
@@ -1056,6 +1048,38 @@ Data that is sent in the activation ping
         <td><a href="https://github.com/mozilla-mobile/fenix/pull/1707#issuecomment-486972209">link</a></td>
         <td></td>
         <td>2019-10-01</td>
+    </tr>
+    <tr>
+        <td>active_experiment</td>
+        <td>string</td>
+        <td>The branch name of the active experiment, if the client is enrolled in the `fenix-test-2019-08-05` experiment.</td>
+        <td><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1543986#c4">link</a></td>
+        <td></td>
+        <td>2019-11-01</td>
+    </tr>
+</table>
+</pre>
+
+## search_widget
+
+<pre>
+<table style="width: 100%">
+    <tr>
+        <td>new_tab_button</td>
+        <td>event</td>
+        <td>A user pressed anywhere from the Firefox logo until the start of the microphone icon, opening a
+                  new tab search screen.</td>
+        <td><a href="https://github.com/mozilla-mobile/fenix/pull/4714">link</a></td>
+        <td></td>
+        <td>2020-03-01</td>
+    </tr>
+    <tr>
+        <td>voice_button</td>
+        <td>event</td>
+        <td>A user pressed the microphone icon, opening a new voice search screen.</td>
+        <td><a href="https://github.com/mozilla-mobile/fenix/pull/4714">link</a></td>
+        <td></td>
+        <td>2020-03-01</td>
     </tr>
 </table>
 </pre>

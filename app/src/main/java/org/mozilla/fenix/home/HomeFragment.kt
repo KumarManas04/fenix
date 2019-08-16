@@ -245,7 +245,7 @@ class HomeFragment : Fragment(), AccountObserver {
         view.toolbar_wrapper.setOnClickListener {
             invokePendingDeleteJobs()
             onboarding.finish()
-            val directions = HomeFragmentDirections.actionHomeFragmentToSearchFragment(null)
+            val directions = HomeFragmentDirections.actionHomeFragmentToSearchFragment(null, true)
             val extras =
                 FragmentNavigator.Extras.Builder()
                     .addSharedElement(toolbar_wrapper, "toolbar_wrapper_transition")
@@ -396,7 +396,7 @@ class HomeFragment : Fragment(), AccountObserver {
             }
             is TabAction.Add -> {
                 invokePendingDeleteJobs()
-                val directions = HomeFragmentDirections.actionHomeFragmentToSearchFragment(null)
+                val directions = HomeFragmentDirections.actionHomeFragmentToSearchFragment(null, true)
                 nav(R.id.homeFragment, directions)
             }
             is TabAction.ShareTabs -> {
@@ -572,6 +572,10 @@ class HomeFragment : Fragment(), AccountObserver {
                 }
                 HomeMenu.Item.Help -> {
                     invokePendingDeleteJobs()
+                    if (!onboarding.userHasBeenOnboarded()) {
+                        onboarding.finish()
+                        emitModeChanges()
+                    }
                     (activity as HomeActivity).openToBrowserAndLoad(
                         searchTermOrURL = SupportUtils.getSumoURLForTopic(
                             context!!,
@@ -728,7 +732,7 @@ class HomeFragment : Fragment(), AccountObserver {
         Mode.fromBrowsingMode(browsingModeManager.mode)
     }
 
-    private fun emitAccountChanges() {
+    private fun emitModeChanges() {
         context?.let {
             val mode = currentMode(it)
             getManagedEmitter<SessionControlChange>().onNext(SessionControlChange.ModeChange(mode))
@@ -736,17 +740,19 @@ class HomeFragment : Fragment(), AccountObserver {
     }
 
     override fun onAuthenticated(account: OAuthAccount, newAccount: Boolean) {
-        view?.let {
-            FenixSnackbar.make(it, Snackbar.LENGTH_SHORT).setText(
-                it.context.getString(R.string.onboarding_firefox_account_sync_is_on)
-            ).show()
+        if (newAccount) {
+            view?.let {
+                FenixSnackbar.make(it, Snackbar.LENGTH_SHORT).setText(
+                    it.context.getString(R.string.onboarding_firefox_account_sync_is_on)
+                ).show()
+            }
         }
-        emitAccountChanges()
+        emitModeChanges()
     }
 
-    override fun onAuthenticationProblems() = emitAccountChanges()
-    override fun onLoggedOut() = emitAccountChanges()
-    override fun onProfileUpdated(profile: Profile) = emitAccountChanges()
+    override fun onAuthenticationProblems() = emitModeChanges()
+    override fun onLoggedOut() = emitModeChanges()
+    override fun onProfileUpdated(profile: Profile) = emitModeChanges()
 
     private fun scrollAndAnimateCollection(
         tabsAddedToCollectionSize: Int,
